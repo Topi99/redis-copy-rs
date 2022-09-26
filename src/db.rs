@@ -1,4 +1,4 @@
-use std::{sync::{Arc, Mutex}, collections::HashMap};
+use std::{sync::{Arc, Mutex, MutexGuard}, collections::HashMap};
 
 use bytes::Bytes;
 
@@ -22,7 +22,7 @@ pub struct State {
   entries: HashMap<String, Entry>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Entry {
   data: Bytes,
 }
