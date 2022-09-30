@@ -1,7 +1,13 @@
-use tokio::{net::{TcpListener, TcpStream}, sync::Semaphore, time};
+use bytes::{BytesMut};
+use tokio::{
+  net::{TcpListener, TcpStream},
+  sync::Semaphore,
+  time,
+  io::{BufReader, AsyncReadExt},
+};
 use std::{sync::Arc, time::Duration};
 
-use crate::{db::DbDropGuard, Result};
+use crate::{db::{DbDropGuard, Db}, Result};
 
 const MAX_CONNECTIONS: usize = 250;
 
@@ -22,17 +28,31 @@ struct Server {
   limit_connections: Arc<Semaphore>,
 }
 
+struct Handler {
+  db: Db,
+}
+
 impl Server {
   async fn run(&self) -> Result<()> {
+    println!("Ready to receive connections...");
+
     loop {
       let permit = self
         .limit_connections.clone().acquire_owned().await.unwrap();
+      let mut socket = self.accept().await?;
+      println!("Connection accepted.");
 
-      println!("Ready to receive connections...");
-      self.accept().await?;
+      tokio::spawn(async move {
+        let (read, _) = socket.split();
+        let mut reader = BufReader::new(read);
+        let mut buff = BytesMut::with_capacity(1024);
 
-      println!("Accepted connection");
-      // drop(permit);
+        loop {
+          reader.read_buf(&mut buff).await.unwrap();
+          println!("{:?}", buff);
+          buff.clear();
+        }
+      });
     }
   }
 
@@ -52,6 +72,14 @@ impl Server {
       time::sleep(Duration::from_secs(backoff)).await;
 
       backoff *= 2;
+    }
+  }
+}
+
+impl Handler {
+  pub async fn run(&self) -> Result<()> {
+    loop {
+      
     }
   }
 }
