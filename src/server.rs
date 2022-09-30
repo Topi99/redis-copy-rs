@@ -1,6 +1,5 @@
-use bytes::Bytes;
 use tokio::{net::{TcpListener, TcpStream}, sync::Semaphore, time};
-use std::{str, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use crate::{db::DbDropGuard, Result};
 
@@ -38,8 +37,6 @@ impl Server {
   }
 
   async fn accept(&self) -> Result<TcpStream> {
-      // time::sleep(Duration::from_secs(1)).await;
-      // Ok(())
     let mut backoff = 1;
 
     loop {
