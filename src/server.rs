@@ -1,13 +1,14 @@
+use crate::{db::{DbDropGuard, Db}, Result, connection::{Connection}};
+
+use std::{sync::Arc, time::Duration};
 use bytes::{BytesMut};
 use tokio::{
   net::{TcpListener, TcpStream},
   sync::Semaphore,
   time,
-  io::{BufReader, AsyncReadExt},
+  io::{BufReader, AsyncReadExt, BufWriter},
 };
-use std::{sync::Arc, time::Duration};
-
-use crate::{db::{DbDropGuard, Db}, Result};
+use tracing::{error};
 
 const MAX_CONNECTIONS: usize = 250;
 
@@ -30,6 +31,7 @@ struct Server {
 
 struct Handler {
   db: Db,
+  connection: Connection,
 }
 
 impl Server {
@@ -39,19 +41,17 @@ impl Server {
     loop {
       let permit = self
         .limit_connections.clone().acquire_owned().await.unwrap();
-      let mut socket = self.accept().await?;
-      println!("Connection accepted.");
+      let socket = self.accept().await?;
+      let mut handler = Handler {
+        db: self.db_holder.db(),
+        connection: Connection::new(socket),
+      };
 
       tokio::spawn(async move {
-        let (read, _) = socket.split();
-        let mut reader = BufReader::new(read);
-        let mut buff = BytesMut::with_capacity(1024);
-
-        loop {
-          reader.read_buf(&mut buff).await.unwrap();
-          println!("{:?}", buff);
-          buff.clear();
+        if let Err(err) = handler.run().await {
+          error!(cause = ?err, "connection error");
         }
+        drop(permit);
       });
     }
   }
@@ -77,9 +77,16 @@ impl Server {
 }
 
 impl Handler {
-  pub async fn run(&self) -> Result<()> {
+  pub async fn run(&mut self) -> Result<()> {
+    // let mut reader = BufWriter::new(socket);
+    // let mut buff = BytesMut::with_capacity(1024);
+
     loop {
-      
+      // reader.read_buf(&mut buff).await.unwrap();
+      // println!("{:?}", buff);
+      // buff.clear();
+      let string = self.connection.read_frame().await.unwrap().unwrap();
+      println!("{string}");
     }
   }
 }

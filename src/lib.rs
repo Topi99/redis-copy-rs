@@ -1,5 +1,5 @@
 pub mod db;
-
+pub mod connection;
 pub mod server;
 
 pub const DEFAULT_PORT: &str = "6379";
